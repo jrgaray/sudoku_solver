@@ -1,4 +1,17 @@
-import random
+# import random
+import pygame
+
+squarePositions = {
+    0: [0, 0],
+    1: [0, 1],
+    2: [0, 2],
+    3: [1, 0],
+    4: [1, 1],
+    5: [1, 2],
+    6: [2, 0],
+    7: [2, 1],
+    8: [2, 2],
+}
 
 
 class SudokuBox:
@@ -33,7 +46,11 @@ class SudokuBoard:
             # top to bottom.
             for row in self.board:
                 for box in row:
-                    print(box)
+                    position = random.randint(0, 8)
+
+
+
+
 
     def __init__(self):
         random.seed()
@@ -54,4 +71,3 @@ class SudokuBoard:
 
 
 SudokuBoard()
-print(random.randint(1, 9))
