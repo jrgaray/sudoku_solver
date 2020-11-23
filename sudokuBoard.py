@@ -20,6 +20,7 @@ def calcRelativePosition(n):
     return [boxRow, boxCol, localBoxRow, localBoxCol]
 
 
+# Models the 3x3 box within a sudoku puzzle.
 class SudokuBox:
     # Copies the rows of a SudokuBox and returns a list of rows.
     def copyRows(self, rows):
@@ -31,6 +32,8 @@ class SudokuBox:
             box.append(boxRow)
         return box
 
+    # Constructor inits rows if that argument was passed. Otherwise,
+    # inits an empty box.
     def __init__(self, rows=None):
         self.rows = self.copyRows(rows) if rows else [
             [0, 0, 0],
@@ -39,7 +42,7 @@ class SudokuBox:
         ]
 
     # Fills out a SudokuBox with randomized numbers.
-    def initFirstBlock(self):
+    def seedPuzzle(self):
         values = []
         # Add values 1 - 9 to an array and shuffle the values.
         for i in range(1, 10):
@@ -66,38 +69,45 @@ class SudokuBox:
     def hasValue(self, value):
         return value in self.rows[0] or value in self.rows[1] or value in self.rows[2]
 
+    def getSquare(self, row, col):
+        return self.rows[row][col]
+
 
 class SudokuBoard:
     # Gets a box by it's coordinates.
     def getBox(self, row, col):
-        if(row > 2 or row < 0 or col > 2 or col < 0):
-            return IndexError
         return self.board[row][col]
+
+    def getSquareValue(self, n):
+        boxRow, boxCol, localRow, localCol = calcRelativePosition(n)
+        return self.getBox(boxRow, boxCol).getSquare(localRow, localCol)
 
     # Clears out a cell.
     def clearCell(self, n):
-        boxRow, boxCol, localRow, localCol = calcRelativePosition(n)
-        box = self.getBox(boxRow, boxCol)
-        if(box.rows[localRow][localCol] > 0):
-            box.rows[localRow][localCol] = 0
+        value = self.getSquareValue(n)
+        if(value > 0):
+            self.fillInSquare(n, 0)
             return True
         return False
 
-    # Checks if a placement is a valid sudoku move.
-    def validatePlacement(self, boxRow, boxCol, localBoxRow, localBoxCol, value):
-        box = self.getBox(boxRow, boxCol)
-        if(box.hasValue(value)):
-            return False
-
-        # Validate the value isn't in the row or column.
+    # Validate the value isn't in the row or column.
+    def checkRowCol(self, boxRow, boxCol, localRow, localCol, value):
         for i in range(3):
-            rowBox = self.board[boxRow][i]
-            colBox = self.board[i][boxCol]
-            if(rowBox.checkRowForValue(localBoxRow, value)):
-                return False
-            if(colBox.checkColumnForValue(localBoxCol, value)):
+            isInRow = self.getBox(
+                boxRow, i).checkRowForValue(localRow, value)
+
+            isInCol = self.getBox(
+                i, boxCol).checkColumnForValue(localCol, value)
+            if(isInRow or isInCol):
                 return False
         return True
+
+    # Checks if a placement is a valid sudoku move.
+
+    def validatePlacement(self, n, value):
+        boxRow, boxCol, localRow, localCol = calcRelativePosition(n)
+        box = self.getBox(boxRow, boxCol)
+        return not box.hasValue(value) and self.checkRowCol(boxRow, boxCol, localRow, localCol, value)
 
     # Checks if the puzzle has a unique solution by brute force. Checks all
     # possible solutions for a puzzle and returns the number of possilbe solutions.
@@ -121,41 +131,45 @@ class SudokuBoard:
             #  2.) follow the path down for possible solutions,
             #  3.) incrementing the counter with the number of solutions found for the current puzzle,
             #  4.) clear the square
-            if(self.validatePlacement(boxRow, boxCol, localBoxRow, localBoxCol, i)):
-                self.fillInSquare(boxRow, boxCol, localBoxRow, localBoxCol, i)
+            if(self.validatePlacement(n, i)):
+                self.fillInSquare(n, i)
                 counter += self.checkUniqueness(n+1)
-                self.fillInSquare(boxRow, boxCol, localBoxRow, localBoxCol, 0)
+                self.fillInSquare(n, 0)
 
         return counter
 
     # Fill in a cell with a value.
-    def fillInSquare(self, boxRow, boxCol, localRow, localCol, value):
-        cell = self.board[boxRow][boxCol].rows
+    def fillInSquare(self, n, value):
+        boxRow, boxCol, localRow, localCol = calcRelativePosition(n)
+        cell = self.getBox(boxRow, boxCol).rows
         cell[localRow][localCol] = value
 
     # Fills the board with a valid sudoku solution.
     def fillBoard(self, n):
+        # Base case. If fillBoard has reached 81 calls, the board has been
+        # filled out.
         if(n > 80):
             return True
-        boxRow, boxCol, localBoxRow, localBoxCol = calcRelativePosition(n)
 
-        # If we come to a spot that already has a value, skip it.
-        if(self.board[boxRow][boxCol].rows[localBoxRow][localBoxCol] > 0):
+        # If we come to a spot that already has a value, skip over it.
+        if(self.getSquareValue(n) > 0):
             return self.fillBoard(n+1)
 
         # Check if the value can be placed at a given  position without violating
         # any of the sudoku rules.
         for i in range(1, 10):
-            if(self.validatePlacement(boxRow, boxCol, localBoxRow, localBoxCol, i)):
-                self.fillInSquare(boxRow, boxCol, localBoxRow, localBoxCol, i)
+            if(self.validatePlacement(n, i)):
+                self.fillInSquare(n, i)
+                # Continue checking the next square.
                 if(self.fillBoard(n+1)):
                     return True
 
         # A value could not be placed so we must reset the value at this space
         # and backtrack.
-        self.fillInSquare(boxRow, boxCol, localBoxRow, localBoxCol, 0)
+        self.fillInSquare(n, 0)
         return False
 
+    # Creates a new copy of the board from a given board.
     def copyBoard(self, board):
         newBoard = []
         for row in board:
@@ -165,6 +179,7 @@ class SudokuBoard:
             newBoard.append(newRow)
         return newBoard
 
+    # Returns the board in a simple 2D array with no classes.
     def simpleBoard(self):
         board = []
         for row in self.board:
@@ -176,6 +191,8 @@ class SudokuBoard:
                 board.append(newRow)
         return board
 
+    # Checks to see if there is a match between the board in it's current state
+    # and the solution.
     def isSolved(self):
         for r1, r2 in zip(self.simpleBoard(), self.solution):
             for e1, e2 in zip(r1, r2):
@@ -183,8 +200,9 @@ class SudokuBoard:
                     return False
         return True
 
+    # Constructor for the SudokuBoard. Either creates a board from an existing board
+    # or creates an empty board and randomly generates a new puzzle.
     def __init__(self, board=None):
-        self.solution = None
 
         self.board = self.copyBoard(board) if board else [
             [SudokuBox(), SudokuBox(), SudokuBox()],
@@ -194,9 +212,14 @@ class SudokuBoard:
 
         if(board == None):
             random.seed()
-            self.board[0][0].initFirstBlock()
+            row = random.randint(0, 2)
+            col = random.randint(0, 2)
+            self.getBox(row, col).seedPuzzle()
             self.fillBoard(0)
 
+        self.solution = self.simpleBoard()
+
+    # Prints out the board to the console to be easily read.
     def __str__(self):
         output = " -----------------------------------\n"
         for row in self.board:
@@ -208,25 +231,21 @@ class SudokuBoard:
             output += " -----------------------------------\n"
         return output
 
-    def createPuzzle(self):
-        # Create a copy of the board in a simple 2D array format.
-        copy = self.simpleBoard()
-        self.solution = self.simpleBoard()
+    # For a given nth value, replace the cell's value from the solution.
+    def replaceValue(self, n):
+        gRow, gCol = calculateAbsoluteRowCol(n)
+        value = self.solution[gRow][gCol]
+        self.fillInSquare(n, value)
 
-        # Loop through and remove 45 numbers from the puzzle.
-        # On each removal, check the puzzle to ensure there is
-        # exactly one solution.
+    # Generates the puzzle by looping through and removing 45 numbers from the puzzle.
+    # On each removal, check the puzzle to ensure there is exactly one solution,
+    # backfilling the cell with the previous value else.
+    def createPuzzle(self):
         count = 0
         while(count < 45):
             n = random.randint(0, 80)
             if(self.clearCell(n)):
-                boardCheck = SudokuBoard(self.board)
-                if(boardCheck.checkUniqueness(0) == 1):
+                if(SudokuBoard(self.board).checkUniqueness(0) == 1):
                     count += 1
                 else:
-                    gRow, gCol = calculateAbsoluteRowCol(n)
-                    value = copy[gRow][gCol]
-                    boxRow, boxCol, localRow, localCol = calcRelativePosition(
-                        n)
-                    self.fillInSquare(
-                        boxRow, boxCol, localRow, localCol, value)
+                    self.replaceValue(n)
