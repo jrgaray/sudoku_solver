@@ -154,10 +154,15 @@ class SudokuBoard:
         # If we come to a spot that already has a value, skip over it.
         if(self.getSquareValue(n) > 0):
             return self.fillBoard(n+1)
+        values = []
+        # Add values 1 - 9 to an array and shuffle the values.
+        for i in range(1, 10):
+            values.append(i)
+        random.shuffle(values)
 
         # Check if the value can be placed at a given  position without violating
         # any of the sudoku rules.
-        for i in range(1, 10):
+        for i in values:
             if(self.validatePlacement(n, i)):
                 self.fillInSquare(n, i)
                 # Continue checking the next square.

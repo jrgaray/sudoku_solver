@@ -91,13 +91,18 @@ def drawBoard(screen, squares, touchedPosition):
     return activeCell
 
 
-def checkForUserInput(activeCell, touchedPosition, puzzle):
-    newPosition = None
+def checkForUserInput(activeCell, touchedPosition, puzzle, isGameRunning):
+    newPosition = touchedPosition
+    gameFlag = isGameRunning
     for event in pygame.event.get():
         if event.type == pygame.MOUSEBUTTONDOWN:
             newPosition = pygame.mouse.get_pos()
-        if event.type == KEYUP and activeCell != None and event.key in KEYS:
+        elif event.type == KEYDOWN and event.key == K_ESCAPE:
+            gameFlag = False
+        elif event.type == KEYUP and activeCell != None and event.key in KEYS:
             value = event.key - 48 if event.key != K_BACKSPACE else 0
             if(value == 0 or puzzle.validatePlacement(activeCell, value)):
                 puzzle.fillInSquare(activeCell, value)
-    return newPosition if newPosition else touchedPosition
+    return (newPosition, gameFlag)
+    
+    
