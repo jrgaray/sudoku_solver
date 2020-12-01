@@ -102,8 +102,8 @@ class SudokuBoard:
                 return False
         return True
 
-    # Checks if a placement is a valid sudoku move.
 
+    # Checks if a placement is a valid sudoku move.
     def validatePlacement(self, n, value):
         boxRow, boxCol, localRow, localCol = calcRelativePosition(n)
         box = self.getBox(boxRow, boxCol)
